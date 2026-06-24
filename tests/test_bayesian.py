@@ -17,18 +17,18 @@ def tmp_priors_path():
 
 
 @pytest.fixture
-def rooms():
+def areas():
     return ["family_room", "kitchen", "living_room", "master", "den"]
 
 
 @pytest.fixture
-def prior_store(tmp_priors_path, rooms):
-    return PriorStore(priors_path=tmp_priors_path, rooms=rooms)
+def prior_store(tmp_priors_path, areas):
+    return PriorStore(priors_path=tmp_priors_path, areas=areas)
 
 
 @pytest.fixture
-def engine(prior_store, rooms):
-    return BayesianEngine(rooms=rooms, prior_store=prior_store)
+def engine(prior_store, areas):
+    return BayesianEngine(areas=areas, prior_store=prior_store)
 
 
 class TestLikelihoods:
@@ -82,7 +82,7 @@ class TestLikelihoods:
             kind="gps",
             state="home",
         )
-        # GPS home is uninformative at room level
+        # GPS home is uninformative at area level
         assert compute_likelihood(obs, "kitchen") == 1.0
         assert compute_likelihood(obs, "family_room") == 1.0
 
@@ -109,7 +109,7 @@ class TestBayesianEngine:
         assert result.entropy > 1.0  # high uncertainty
 
     def test_ble_strong_signal(self, engine):
-        """BLE pointing at a room should dominate."""
+        """BLE pointing at a area should dominate."""
         obs = [Observation(
             entity_id="device_tracker.phone",
             kind="ble",
@@ -123,7 +123,7 @@ class TestBayesianEngine:
         assert result.confidence > 0.5
 
     def test_motion_only_inference(self, engine):
-        """Motion in one room should point to that room (Piper's case)."""
+        """Motion in one area should point to that area (Piper's case)."""
         obs = [
             Observation(
                 entity_id="binary_sensor.family_occupancy",
@@ -144,7 +144,7 @@ class TestBayesianEngine:
         assert result.area == "family_room"
         assert result.confidence > 0.3  # motion-only is weaker than BLE
 
-    def test_correction_shifts_prior(self, engine, prior_store, rooms):
+    def test_correction_shifts_prior(self, engine, prior_store, areas):
         """After corrections, the prior should influence the posterior."""
         # Add many corrections for family_room at the current hour
         for _ in range(20):

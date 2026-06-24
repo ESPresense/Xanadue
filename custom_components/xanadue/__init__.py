@@ -7,13 +7,12 @@ be imported in isolation for testing without homeassistant installed.
 from .const import DOMAIN, CONF_NAME, CONF_SENSORS
 
 # Defer HA imports until setup hooks are called
-_PLATFORMS = ["sensor"]
+_PLATFORMS = ["device_tracker"]
 
 
 async def async_setup(hass, config):
     """Set up via YAML configuration.yaml."""
     # Lazy import to keep pure modules testable
-    from homeassistant.core import HomeAssistant  # noqa: F401
     import voluptuous as vol
 
     if DOMAIN not in config:

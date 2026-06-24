@@ -76,21 +76,21 @@ class TestClassifyAll:
         assert results[4].kind == SensorKind.GPS
 
 
-class TestExtractRooms:
-    def test_extract_rooms_from_motion(self):
+class TestExtractAreas:
+    def test_extract_areas_from_motion(self):
         sensors = classify_all([
             "binary_sensor.family_occupancy",
             "binary_sensor.kitchen_occupancy",
             "binary_sensor.living_occupancy",
         ], "George")
-        rooms = extract_areas(sensors)
-        assert "family" in rooms
-        assert "kitchen" in rooms
-        assert "living" in rooms
+        areas = extract_areas(sensors)
+        assert "family" in areas
+        assert "kitchen" in areas
+        assert "living" in areas
 
-    def test_no_rooms_from_ble_only(self):
+    def test_no_areas_from_ble_only(self):
         sensors = classify_all([
             "device_tracker.phone_george_15_pro",
         ], "George")
-        rooms = extract_areas(sensors)
-        assert rooms == []
+        areas = extract_areas(sensors)
+        assert areas == []

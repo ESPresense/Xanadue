@@ -30,7 +30,9 @@ The integration fuses those signals with a Bayesian model, producing one sensor 
 
 | Entity | State | Attributes |
 |---|---|---|
-| `sensor.xanadue_george_current_area` | `family_room` | `confidence`, `entropy`, `alternatives`, `observations_used` |
+| `device_tracker.george` | `family_room` | `source_type`, `xanadue: {confidence, entropy, alternatives, observations_used, slug}` |
+
+The state is the inferred area name, which composes directly with HA's `person.*` entities — add `device_tracker.george` to your `person.george` entity's `device_trackers` list and `person.george` becomes driven by Xanadue.
 
 ## Teaching Xanadue
 
@@ -43,7 +45,7 @@ data:
   area: kitchen
 ```
 
-That correction feeds the time-of-day priors. After a few evenings of correcting "10 PM → family room," the prior learns your routine. No priors UI, no YAML tuning — just tell it where you are and it gets smarter.
+That correction feeds the time-of-day priors. After a few evenings of correcting "10 PM → family area," the prior learns your routine. No priors UI, no YAML tuning — just tell it where you are and it gets smarter.
 
 ## Installation
 

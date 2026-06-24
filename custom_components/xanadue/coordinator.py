@@ -52,7 +52,7 @@ class XanadueCoordinator(DataUpdateCoordinator):
         # Classify sensors
         self.classified = classify_all(self.sensor_ids, self.name)
 
-        # Extract static rooms from motion sensor names
+        # Extract static areas from motion sensor names
         static_areas = extract_areas(self.classified)
 
         # Data storage
@@ -62,12 +62,12 @@ class XanadueCoordinator(DataUpdateCoordinator):
         # Prior store (loads from disk or initializes)
         self.prior_store = PriorStore(
             priors_path=self.store.get_priors_path(),
-            rooms=static_areas or ["unknown"],
+            areas=static_areas or ["unknown"],
         )
 
         # Inference engine
         self.engine = BayesianEngine(
-            rooms=static_areas or ["unknown"],
+            areas=static_areas or ["unknown"],
             prior_store=self.prior_store,
         )
 
@@ -91,7 +91,7 @@ class XanadueCoordinator(DataUpdateCoordinator):
         )
         await super().async_config_entry_first_refresh()
         _LOGGER.info(
-            "[Xanadue] Coordinator started for '%s' with %d sensors, rooms: %s",
+            "[Xanadue] Coordinator started for '%s' with %d sensors, areas: %s",
             self.name,
             len(self.sensor_ids),
             self.engine.areas,
@@ -134,13 +134,13 @@ class XanadueCoordinator(DataUpdateCoordinator):
             age = now - last_change
 
             if sensor.kind == SensorKind.BLE:
-                # BLE tracker: state is the room name, confidence from attributes
+                # BLE tracker: state is the area name, confidence from attributes
                 confidence = state_obj.attributes.get("confidence", 0.8)
                 observations.append(Observation(
                     entity_id=sensor.entity_id,
                     kind="ble",
                     state=state_obj.state,
-                    room=state_obj.state,
+                    area=state_obj.state,
                     confidence=confidence,
                     age_seconds=age,
                 ))
@@ -149,7 +149,7 @@ class XanadueCoordinator(DataUpdateCoordinator):
                     entity_id=sensor.entity_id,
                     kind="motion",
                     state=state_obj.state,
-                    room=sensor.area_hint,
+                    area=sensor.area_hint,
                     age_seconds=age,
                 ))
             elif sensor.kind == SensorKind.GPS:
@@ -171,7 +171,7 @@ class XanadueCoordinator(DataUpdateCoordinator):
         # Log posterior
         log_entry = {
             "ts": estimate.timestamp,
-            "room": estimate.room,
+            "area": estimate.area,
             "confidence": estimate.confidence,
             "entropy": estimate.entropy,
             "posterior": {k: round(v, 4) for k, v in estimate.posterior.items()},
@@ -209,18 +209,18 @@ class XanadueCoordinator(DataUpdateCoordinator):
                 elif now - self._stable_since >= AUTO_LABEL_STABILITY_SECONDS:
                     # Stable long enough → auto-label
                     self.prior_store.add_correction(
-                        room=estimate.room,
+                        area=estimate.area,
                         weight=AUTO_LABEL_WEIGHT,
                     )
                     self.store.append_ground_truth(
-                        room=estimate.room,
+                        area=estimate.area,
                         source="auto",
                         weight=AUTO_LABEL_WEIGHT,
                     )
                     _LOGGER.debug(
                         "[Xanadue] Auto-label: %s → %s (conf=%.2f, entropy=%.2f)",
                         self.slug,
-                        estimate.room,
+                        estimate.area,
                         estimate.confidence,
                         estimate.entropy,
                     )
@@ -233,7 +233,7 @@ class XanadueCoordinator(DataUpdateCoordinator):
         self.prior_store.add_correction(area=area, weight=weight)
         self.store.append_ground_truth(area=area, source="manual", weight=weight)
 
-        # Add room to engine's room space if new
+        # Add area to engine's area space if new
         if area not in self.engine.areas:
             self.engine.areas.append(area)
             self.prior_store.areas.append(area)

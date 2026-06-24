@@ -21,7 +21,7 @@ correct:
         text:
     duration:
       name: Duration (seconds)
-      description: How long the person has been in this room (optional, strengthens the correction)
+      description: How long the person has been in this area (optional, strengthens the correction)
       required: false
       example: 1800
       selector:

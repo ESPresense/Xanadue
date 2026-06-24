@@ -1,6 +1,6 @@
-"""Time-of-day priors for room inference.
+"""Time-of-day priors for area inference.
 
-Priors are keyed by (person_slug, hour_of_day, room) and stored as JSON.
+Priors are keyed by (person_slug, hour_of_day, area) and stored as JSON.
 They're updated incrementally by xanadue.correct service calls.
 
 Default priors are uniform until corrections are received.
@@ -37,11 +37,11 @@ class PriorStore:
     With Laplace smoothing applied to raw counts.
     """
 
-    def __init__(self, priors_path: str, rooms: list[str], alpha: float = DEFAULT_SMOOTHING_ALPHA):
+    def __init__(self, priors_path: str, areas: list[str], alpha: float = DEFAULT_SMOOTHING_ALPHA):
         self.path = priors_path
-        self.areas = rooms
+        self.areas = areas
         self.alpha = alpha
-        # Raw counts: {hour_str: {room: count}} — keys are str for JSON compat
+        # Raw counts: {hour_str: {area: count}} — keys are str for JSON compat
         self._counts: dict[str, dict[str, float]] = {}
         self._load()
 
@@ -83,7 +83,7 @@ class PriorStore:
         self._save()
 
     def get_prior(self, hour: int) -> dict[str, float]:
-        """Get the prior distribution over rooms for a given hour.
+        """Get the prior distribution over areas for a given hour.
 
         Returns a normalized distribution using Laplace smoothing.
         """
@@ -113,6 +113,6 @@ class PriorStore:
     def has_data(self) -> bool:
         """Whether any corrections have been received."""
         return any(
-            any(v > 0 for v in rooms.values())
-            for rooms in self._counts.values()
+            any(v > 0 for v in areas.values())
+            for areas in self._counts.values()
         )

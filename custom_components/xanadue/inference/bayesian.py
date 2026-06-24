@@ -1,6 +1,6 @@
-"""Bayesian room inference engine.
+"""Bayesian area inference engine.
 
-Maintains a categorical posterior over rooms for a single person,
+Maintains a categorical posterior over areas for a single person,
 updated incrementally as new observations arrive.
 """
 
@@ -17,39 +17,39 @@ from .priors import PriorStore, hour_bucket
 
 @dataclass
 class AreaEstimate:
-    """The output of a Bayesian room inference step."""
+    """The output of a Bayesian area inference step."""
 
     area: str                          # best guess
     confidence: float                  # posterior probability of best guess
     entropy: float                     # Shannon entropy in nats
-    alternatives: list[dict]           # [{room, probability}, ...] sorted desc
+    alternatives: list[dict]           # [{area, probability}, ...] sorted desc
     observations_used: list[dict]      # [{source, observed, weight}, ...]
     posterior: dict[str, float]        # full posterior distribution
     timestamp: float                   # when this estimate was computed
 
 
 class BayesianEngine:
-    """Per-person Bayesian room inference.
+    """Per-person Bayesian area inference.
 
     On each update:
-        P(room | observations, time) ∝ π(room, time) · ∏ P(obs_i | room)
+        P(area | observations, time) ∝ π(area, time) · ∏ P(obs_i | area)
 
     The prior is time-of-day dependent and learned from corrections.
     """
 
     def __init__(
         self,
-        rooms: list[str],
+        areas: list[str],
         prior_store: PriorStore,
         max_observation_age: float = 600.0,  # 10 min
     ):
-        self.areas = rooms
+        self.areas = areas
         self.prior_store = prior_store
         self.max_observation_age = max_observation_age
         self._last_estimate: Optional[AreaEstimate] = None
 
     def infer(self, observations: list[Observation], timestamp: Optional[float] = None) -> AreaEstimate:
-        """Compute posterior over rooms given current observations.
+        """Compute posterior over areas given current observations.
 
         Args:
             observations: List of current sensor observations
@@ -70,17 +70,17 @@ class BayesianEngine:
         # Get time-of-day prior
         prior = self.prior_store.get_prior(hour_bucket(timestamp))
 
-        # Compute posterior: P(room | obs) ∝ prior(room) · ∏ P(obs_i | room)
+        # Compute posterior: P(area | obs) ∝ prior(area) · ∏ P(obs_i | area)
         log_posterior: dict[str, float] = {}
 
-        for room in self.areas:
-            log_p = math.log(max(prior.get(room, 1e-10), 1e-10))
+        for area in self.areas:
+            log_p = math.log(max(prior.get(area, 1e-10), 1e-10))
 
             for obs in fresh_obs:
-                likelihood = compute_likelihood(obs, room)
+                likelihood = compute_likelihood(obs, area)
                 log_p += math.log(max(likelihood, 1e-10))
 
-            log_posterior[room] = log_p
+            log_posterior[area] = log_p
 
         # Normalize via log-sum-exp
         max_log = max(log_posterior.values())

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "xanadue"
 version = "0.1.0"
-description = "Per-person room inference from BLE, motion, GPS, and person entities."
+description = "Per-person area inference from BLE, motion, GPS, and person entities."
 license = {text = "MIT"}
 requires-python = ">=3.12"
 

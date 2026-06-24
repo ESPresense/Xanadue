@@ -14,7 +14,7 @@ from typing import Optional
 class SensorKind(str, Enum):
     """What kind of signal a sensor provides."""
 
-    BLE = "ble"        # ESPresense / BLE room-level tracker
+    BLE = "ble"        # ESPresense / BLE area-level tracker
     MOTION = "motion"  # binary_sensor.*_occupancy
     GPS = "gps"        # device_tracker with zone states (home/not_home)
     UNKNOWN = "unknown"
@@ -22,7 +22,11 @@ class SensorKind(str, Enum):
 
 @dataclass
 class ClassifiedSensor:
-    """A sensor classified into a kind with optional metadata."""
+    """A sensor classified into a kind with optional metadata.
+
+    Note: We use `area_hint` and `area_hint` (HA Areas, post-2024.6)
+    rather than `room_hint` — Xanadue produces HA Area identifiers.
+    """
 
     entity_id: str
     kind: SensorKind
@@ -30,7 +34,7 @@ class ClassifiedSensor:
     person_hint: Optional[str] = None
 
 
-# Tokens that indicate BLE room-level trackers (vs GPS zone trackers).
+# Tokens that indicate BLE area-level trackers (vs GPS zone trackers).
 # These need to be specific enough to NOT match plain iPhone GPS trackers
 # like "device_tracker.darrells_iphone" — BLE trackers typically have a
 # hardware/model identifier (e.g. "15_pro", "series_9") or explicit BLE
@@ -39,7 +43,7 @@ _BLE_TOKENS = frozenset({
     "espresense", "beacon", "tag",
 })
 
-# Patterns indicating a hardware/model suffix common in BLE room tracker names.
+# Patterns indicating a hardware/model suffix common in BLE area tracker names.
 # Match things like "phone_darrell_15_pro" or "watch_darrell_series_9".
 _BLE_MODEL_PATTERNS = (
     re.compile(r"\d+[_]?pro"),
@@ -70,7 +74,7 @@ def classify(entity_id: str, person_name: str = "") -> ClassifiedSensor:
     if domain == "binary_sensor":
         for token in _MOTION_TOKENS:
             if token in oid_lower:
-                # Extract room hint by stripping known suffixes
+                # Extract area hint by stripping known suffixes
                 area_hint = oid_lower
                 for suffix in ("_occupancy", "_motion", "_presence", "_combo"):
                     area_hint = area_hint.replace(suffix, "")
@@ -120,14 +124,14 @@ def classify_all(
 
 
 def extract_areas(sensors: list[ClassifiedSensor]) -> list[str]:
-    """Extract the set of rooms from classified sensors.
+    """Extract the set of areas from classified sensors.
 
     Rooms come from:
     - BLE tracker states (dynamic, resolved at runtime)
-    - Motion sensor room_hints (static, from entity_id names)
+    - Motion sensor area_hints (static, from entity_id names)
     """
-    rooms: set[str] = set()
+    areas: set[str] = set()
     for s in sensors:
         if s.kind == SensorKind.MOTION and s.area_hint:
-            rooms.add(s.area_hint)
-    return sorted(rooms)
+            areas.add(s.area_hint)
+    return sorted(areas)
