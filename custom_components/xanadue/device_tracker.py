@@ -62,31 +62,22 @@ class XanadueTracker(CoordinatorEntity, TrackerEntity):
         return SourceType.ROUTER  # fused signal source, not a single type
 
     @property
-    def location_accuracy(self) -> int:
-        """Return the location accuracy in meters.
-
-        BLE room-level ≈ 3m, motion sensor range ≈ 5m, GPS ≈ 50m.
-        We report a moderate accuracy reflective of the fused signal.
-        """
-        return 5
-
-    @property
-    def location_name(self) -> str | None:
-        """Return the inferred area as the location name."""
-        estimate = self.coordinator.data
-        if estimate is None:
-            return None
-        return estimate.area
-
-    @property
     def state(self) -> str | None:
         """Return the current state — the inferred area.
 
         Returns the area object_id (e.g. "family_room"). This matches
         ESPresense's device_tracker convention and works natively with
         HA's presence UI.
+
+        We override `state` directly rather than `location_name` because
+        TrackerEntity's location properties assume a position/location
+        schema that doesn't fit a fused per-person-area output cleanly.
+        The `state` property is what HA's entity machinery actually uses.
         """
-        return self.location_name
+        estimate = self.coordinator.data
+        if estimate is None:
+            return None
+        return estimate.area
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
