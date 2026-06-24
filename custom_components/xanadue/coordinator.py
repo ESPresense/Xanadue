@@ -50,26 +50,16 @@ class XanadueCoordinator(DataUpdateCoordinator):
         self.sensor_ids: list[str] = entry.data.get(CONF_SENSORS, [])
 
         # Classify sensors
-        self.classified = classify_all(self.sensor_ids, self.name)
+        self.classified = classify_all(self.sensor_ids, self._person_name)
 
         # Extract static areas from motion sensor names
-        static_areas = extract_areas(self.classified)
+        self._static_areas = extract_areas(self.classified)
 
-        # Data storage
-        self.data_dir = get_data_dir(hass.config.config_dir, self.slug)
-        self.store = DataStore(self.data_dir)
-
-        # Prior store (loads from disk or initializes)
-        self.prior_store = PriorStore(
-            priors_path=self.store.get_priors_path(),
-            areas=static_areas or ["unknown"],
-        )
-
-        # Inference engine
-        self.engine = BayesianEngine(
-            areas=static_areas or ["unknown"],
-            prior_store=self.prior_store,
-        )
+        # Storage/engine are built off-loop in async_config_entry_first_refresh
+        # (get_data_dir + PriorStore load do blocking disk I/O).
+        self.store: Optional[DataStore] = None
+        self.prior_store: Optional[PriorStore] = None
+        self.engine: Optional[BayesianEngine] = None
 
         # State tracking
         self._last_state_change: dict[str, float] = {}  # entity_id → timestamp
@@ -88,8 +78,26 @@ class XanadueCoordinator(DataUpdateCoordinator):
         """Return the person's display name (not the coordinator logger name)."""
         return self._person_name
 
+    def _init_storage(self) -> None:
+        """Build the on-disk store, prior store, and engine (blocking I/O)."""
+        areas = self._static_areas or ["unknown"]
+        self.data_dir = get_data_dir(self.hass.config.config_dir, self.slug)
+        self.store = DataStore(self.data_dir)
+        self.prior_store = PriorStore(
+            priors_path=self.store.get_priors_path(),
+            areas=areas,
+        )
+        self.engine = BayesianEngine(areas=areas, prior_store=self.prior_store)
+
+    def _persist_correction(self, area: str, source: str, weight: float) -> None:
+        """Apply a correction to disk (prior + ground truth). Runs off-loop."""
+        self.prior_store.add_correction(area=area, weight=weight)
+        self.store.append_ground_truth(area=area, source=source, weight=weight)
+
     async def async_config_entry_first_refresh(self) -> None:
         """First refresh + start listening to state changes."""
+        # Build storage/engine off-loop (blocking disk I/O)
+        await self.hass.async_add_executor_job(self._init_storage)
         # Start listening to state changes on configured sensors
         self._unsub = async_track_state_change_event(
             self.hass, self.sensor_ids, self._handle_state_change
@@ -182,16 +190,18 @@ class XanadueCoordinator(DataUpdateCoordinator):
             "posterior": {k: round(v, 4) for k, v in estimate.posterior.items()},
         }
         try:
-            self.store.append_posterior_log(log_entry)
+            await self.hass.async_add_executor_job(
+                self.store.append_posterior_log, log_entry
+            )
         except Exception:
             pass  # don't let logging break inference
 
         # Check for auto-label conditions
-        self._check_auto_label(estimate)
+        await self._check_auto_label(estimate)
 
         return estimate
 
-    def _check_auto_label(self, estimate: AreaEstimate) -> None:
+    async def _check_auto_label(self, estimate: AreaEstimate) -> None:
         """Check if conditions are met for auto-labeling.
 
         Auto-label fires when:
@@ -213,14 +223,11 @@ class XanadueCoordinator(DataUpdateCoordinator):
                     self._stable_since = now
                 elif now - self._stable_since >= AUTO_LABEL_STABILITY_SECONDS:
                     # Stable long enough → auto-label
-                    self.prior_store.add_correction(
-                        area=estimate.area,
-                        weight=AUTO_LABEL_WEIGHT,
-                    )
-                    self.store.append_ground_truth(
-                        area=estimate.area,
-                        source="auto",
-                        weight=AUTO_LABEL_WEIGHT,
+                    await self.hass.async_add_executor_job(
+                        self._persist_correction,
+                        estimate.area,
+                        "auto",
+                        AUTO_LABEL_WEIGHT,
                     )
                     _LOGGER.debug(
                         "[Xanadue] Auto-label: %s → %s (conf=%.2f, entropy=%.2f)",
@@ -235,8 +242,9 @@ class XanadueCoordinator(DataUpdateCoordinator):
 
     async def apply_correction(self, area: str, weight: float = 1.0) -> None:
         """Apply a manual correction and refresh."""
-        self.prior_store.add_correction(area=area, weight=weight)
-        self.store.append_ground_truth(area=area, source="manual", weight=weight)
+        await self.hass.async_add_executor_job(
+            self._persist_correction, area, "manual", weight
+        )
 
         # Add area to engine's area space if new
         if area not in self.engine.areas:
