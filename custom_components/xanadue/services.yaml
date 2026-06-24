@@ -1,0 +1,31 @@
+correct:
+  name: Correct
+  description: >-
+    Tell Xanadue where a person actually is. This correction feeds the
+    time-of-day priors so the inference gets smarter over time.
+    No priors UI, no YAML tuning — just tell it where you are.
+  fields:
+    xanadue:
+      name: Xanadue
+      description: The name of the Xanadue instance (e.g. "Darrell")
+      required: true
+      example: "darrell"
+      selector:
+        text:
+    room:
+      name: Room
+      description: The room the person is actually in
+      required: true
+      example: "kitchen"
+      selector:
+        text:
+    duration:
+      name: Duration (seconds)
+      description: How long the person has been in this room (optional, strengthens the correction)
+      required: false
+      example: 1800
+      selector:
+        number:
+          min: 0
+          max: 86400
+          unit_of_measurement: seconds

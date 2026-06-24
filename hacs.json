@@ -1,0 +1,9 @@
+{
+  "name": "Xanadue",
+  "content_type": "integration",
+  "domains": ["xanadue"],
+  "country": ["US"],
+  "homeassistant": "2024.6.0",
+  "render_readme": true,
+  "persistent_directory": "xanadue_data"
+}

@@ -1,0 +1,13 @@
+{
+  "domain": "xanadue",
+  "name": "Xanadue",
+  "codeowners": ["@DTTerastar"],
+  "config_flow": true,
+  "documentation": "https://github.com/ESPresense/Xanadue",
+  "integration_type": "sensor",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/ESPresense/Xanadue/issues",
+  "license": "MIT",
+  "requirements": [],
+  "version": "0.1.0"
+}
