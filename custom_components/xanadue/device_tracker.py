@@ -41,19 +41,17 @@ class XanadueTracker(CoordinatorEntity, TrackerEntity):
 
     _attr_has_entity_name = True
     _attr_icon = "mdi:account-location"
-    _attr_translation_key = "xanadue"
 
     def __init__(self, coordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self.coordinator = coordinator
         self._attr_unique_id = f"xanadue_{coordinator.slug}"
-        self._attr_name = f"{coordinator.name} Location"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, coordinator.slug)},
-            "name": f"Xanadue: {coordinator.name}",
+            "name": f"Xanadue: {coordinator.person_name}",
             "manufacturer": "ESPresense",
             "model": "Xanadue",
-            "sw_version": "0.2.0",
+            "sw_version": "0.2.4",
         }
 
     @property
@@ -62,22 +60,24 @@ class XanadueTracker(CoordinatorEntity, TrackerEntity):
         return SourceType.ROUTER  # fused signal source, not a single type
 
     @property
-    def state(self) -> str | None:
-        """Return the current state — the inferred area.
+    def location_name(self) -> str | None:
+        """Return the inferred area as the device location.
 
-        Returns the area object_id (e.g. "family_room"). This matches
-        ESPresense's device_tracker convention and works natively with
-        HA's presence UI.
-
-        We override `state` directly rather than `location_name` because
-        TrackerEntity's location properties assume a position/location
-        schema that doesn't fit a fused per-person-area output cleanly.
-        The `state` property is what HA's entity machinery actually uses.
+        Returns the Bayesian best-guess area (e.g. "family_room").
+        Falls back to the GPS zone ("home", "not_home") when room-level
+        signals are unavailable, so the tracker is always meaningful.
         """
         estimate = self.coordinator.data
         if estimate is None:
             return None
-        return estimate.area
+        # If engine has a real area, use it
+        if estimate.area and estimate.area != "unknown":
+            return estimate.area
+        # Fall back to GPS zone when no room-level data
+        for obs in estimate.observations_used:
+            if obs.get("kind") == "gps":
+                return obs.get("observed")
+        return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

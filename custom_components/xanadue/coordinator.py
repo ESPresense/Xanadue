@@ -45,8 +45,8 @@ class XanadueCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         self.entry = entry
         self.hass = hass
-        self.name: str = entry.data[CONF_NAME]
-        self.slug: str = self.name.lower().strip().replace(" ", "_")
+        self._person_name: str = entry.data[CONF_NAME]
+        self.slug: str = self._person_name.lower().strip().replace(" ", "_")
         self.sensor_ids: list[str] = entry.data.get(CONF_SENSORS, [])
 
         # Classify sensors
@@ -83,6 +83,11 @@ class XanadueCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=DEFAULT_UPDATE_INTERVAL),
         )
 
+    @property
+    def person_name(self) -> str:
+        """Return the person's display name (not the coordinator logger name)."""
+        return self._person_name
+
     async def async_config_entry_first_refresh(self) -> None:
         """First refresh + start listening to state changes."""
         # Start listening to state changes on configured sensors
@@ -92,7 +97,7 @@ class XanadueCoordinator(DataUpdateCoordinator):
         await super().async_config_entry_first_refresh()
         _LOGGER.info(
             "[Xanadue] Coordinator started for '%s' with %d sensors, areas: %s",
-            self.name,
+            self._person_name,
             len(self.sensor_ids),
             self.engine.areas,
         )
