@@ -7,9 +7,9 @@ correct:
   fields:
     xanadue:
       name: Xanadue
-      description: The name of the Xanadue instance (e.g. "Darrell")
+      description: The name of the Xanadue instance (e.g. "George")
       required: true
-      example: "darrell"
+      example: "george"
       selector:
         text:
     area:

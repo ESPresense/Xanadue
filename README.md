@@ -14,23 +14,23 @@ Each Xanadue instance tracks one person. Give it a name and a list of sensors â€
 
 ```yaml
 xanadue:
-  - name: Darrell
+  - name: George
     sensors:
-      - device_tracker.phone_darrell_15_pro
-      - device_tracker.watch_darrells_series_9
-      - binary_sensor.family_occupancy
+      - device_tracker.phone_george
+      - device_tracker.watch_george
+      - binary_sensor.family_room_occupancy
       - binary_sensor.kitchen_occupancy
-      - binary_sensor.living_occupancy
-      - binary_sensor.master_occupancy
-      - binary_sensor.den_occupancy
-      - device_tracker.darrells_iphone
+      - binary_sensor.living_room_occupancy
+      - binary_sensor.bedroom_occupancy
+      - binary_sensor.office_occupancy
+      - device_tracker.george_phone
 ```
 
 The integration fuses those signals with a Bayesian model, producing one sensor per person:
 
 | Entity | State | Attributes |
 |---|---|---|
-| `sensor.xanadue_darrell_current_area` | `family_room` | `confidence`, `entropy`, `alternatives`, `observations_used` |
+| `sensor.xanadue_george_current_area` | `family_room` | `confidence`, `entropy`, `alternatives`, `observations_used` |
 
 ## Teaching Xanadue
 
@@ -39,7 +39,7 @@ Xanadue learns from corrections. When it's wrong, tell it:
 ```yaml
 service: xanadue.correct
 data:
-  xanadue: darrell
+  xanadue: george
   area: kitchen
 ```
 
