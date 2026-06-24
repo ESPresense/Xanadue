@@ -4,7 +4,7 @@ import pytest
 from custom_components.xanadue.classify import (
     classify,
     classify_all,
-    extract_rooms,
+    extract_areas,
     SensorKind,
     ClassifiedSensor,
 )
@@ -37,7 +37,7 @@ class TestClassify:
     def test_motion_sensor_occupancy(self):
         result = classify("binary_sensor.family_occupancy", "Darrell")
         assert result.kind == SensorKind.MOTION
-        assert result.room_hint == "family"
+        assert result.area_hint == "family"
 
     def test_motion_sensor_presence(self):
         result = classify("binary_sensor.family_presence_occupancy", "Darrell")
@@ -47,7 +47,7 @@ class TestClassify:
         """Complex motion sensor name should strip sub-location qualifiers."""
         result = classify("binary_sensor.kitchen_sink_motion_occupancy", "Darrell")
         assert result.kind == SensorKind.MOTION
-        assert "kitchen" in result.room_hint
+        assert "kitchen" in result.area_hint
 
     def test_unknown_domain(self):
         result = classify("sensor.temperature", "")
@@ -83,7 +83,7 @@ class TestExtractRooms:
             "binary_sensor.kitchen_occupancy",
             "binary_sensor.living_occupancy",
         ], "Darrell")
-        rooms = extract_rooms(sensors)
+        rooms = extract_areas(sensors)
         assert "family" in rooms
         assert "kitchen" in rooms
         assert "living" in rooms
@@ -92,5 +92,5 @@ class TestExtractRooms:
         sensors = classify_all([
             "device_tracker.phone_darrell_15_pro",
         ], "Darrell")
-        rooms = extract_rooms(sensors)
+        rooms = extract_areas(sensors)
         assert rooms == []

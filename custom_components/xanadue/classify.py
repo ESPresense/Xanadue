@@ -26,7 +26,7 @@ class ClassifiedSensor:
 
     entity_id: str
     kind: SensorKind
-    room_hint: Optional[str] = None
+    area_hint: Optional[str] = None
     person_hint: Optional[str] = None
 
 
@@ -71,17 +71,17 @@ def classify(entity_id: str, person_name: str = "") -> ClassifiedSensor:
         for token in _MOTION_TOKENS:
             if token in oid_lower:
                 # Extract room hint by stripping known suffixes
-                room_hint = oid_lower
+                area_hint = oid_lower
                 for suffix in ("_occupancy", "_motion", "_presence", "_combo"):
-                    room_hint = room_hint.replace(suffix, "")
+                    area_hint = area_hint.replace(suffix, "")
                 # Also strip sub-location qualifiers like _sink_motion
                 for sub in ("_sink_motion", "_sink", "_ecobee"):
-                    room_hint = room_hint.replace(sub, "")
+                    area_hint = area_hint.replace(sub, "")
                 person_hint = person_name.lower() if person_name else None
                 return ClassifiedSensor(
                     entity_id=entity_id,
                     kind=SensorKind.MOTION,
-                    room_hint=room_hint,
+                    area_hint=area_hint,
                     person_hint=person_hint,
                 )
         return ClassifiedSensor(entity_id=entity_id, kind=SensorKind.UNKNOWN)
@@ -119,7 +119,7 @@ def classify_all(
     return [classify(eid, person_name) for eid in entity_ids]
 
 
-def extract_rooms(sensors: list[ClassifiedSensor]) -> list[str]:
+def extract_areas(sensors: list[ClassifiedSensor]) -> list[str]:
     """Extract the set of rooms from classified sensors.
 
     Rooms come from:
@@ -128,6 +128,6 @@ def extract_rooms(sensors: list[ClassifiedSensor]) -> list[str]:
     """
     rooms: set[str] = set()
     for s in sensors:
-        if s.kind == SensorKind.MOTION and s.room_hint:
-            rooms.add(s.room_hint)
+        if s.kind == SensorKind.MOTION and s.area_hint:
+            rooms.add(s.area_hint)
     return sorted(rooms)

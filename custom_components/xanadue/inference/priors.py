@@ -39,7 +39,7 @@ class PriorStore:
 
     def __init__(self, priors_path: str, rooms: list[str], alpha: float = DEFAULT_SMOOTHING_ALPHA):
         self.path = priors_path
-        self.rooms = rooms
+        self.areas = rooms
         self.alpha = alpha
         # Raw counts: {hour_str: {room: count}} — keys are str for JSON compat
         self._counts: dict[str, dict[str, float]] = {}
@@ -68,7 +68,7 @@ class PriorStore:
 
     def add_correction(
         self,
-        room: str,
+        area: str,
         weight: float = 1.0,
         timestamp: Optional[float] = None,
     ) -> None:
@@ -76,10 +76,10 @@ class PriorStore:
         h = hour_bucket(timestamp)
         hour_key = str(h)
 
-        if room not in self._counts.get(hour_key, {}):
-            self._counts.setdefault(hour_key, {})[room] = 0.0
+        if area not in self._counts.get(hour_key, {}):
+            self._counts.setdefault(hour_key, {})[area] = 0.0
 
-        self._counts[hour_key][room] += weight
+        self._counts[hour_key][area] += weight
         self._save()
 
     def get_prior(self, hour: int) -> dict[str, float]:
@@ -91,18 +91,18 @@ class PriorStore:
         raw = self._counts.get(hour_key, {})
 
         # Total weight for this hour
-        total = sum(raw.values()) + self.alpha * len(self.rooms)
+        total = sum(raw.values()) + self.alpha * len(self.areas)
 
         if total == 0:
             # No data at all → uniform
-            n = len(self.rooms) if self.rooms else 1
-            return {r: 1.0 / n for r in self.rooms}
+            n = len(self.areas) if self.areas else 1
+            return {r: 1.0 / n for r in self.areas}
 
         # Laplace-smoothed distribution
         result = {}
-        for room in self.rooms:
-            count = raw.get(room, 0.0)
-            result[room] = (count + self.alpha) / total
+        for area in self.areas:
+            count = raw.get(area, 0.0)
+            result[area] = (count + self.alpha) / total
 
         return result
 

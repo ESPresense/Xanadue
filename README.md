@@ -4,7 +4,7 @@
 
 In the late 1990s, Bill Gates built Xanadu 2.0 — a smart home that knew who was in every room. It cost over $80 million.
 
-**Xanadue** is named after that house. It's a Home Assistant integration that fuses BLE, motion, GPS, and person entities into per-person room assignments with confidence — so you can build the kind of ambient, room-aware automations that Xanadu 2.0 made famous. What you do with that signal is up to you.
+**Xanadue** is named after that house. It's a Home Assistant integration that fuses BLE, motion, GPS, and person entities into per-person area assignments with confidence — so you can build the kind of ambient, area-aware automations that Xanadu 2.0 made famous. What you do with that signal is up to you.
 
 It is, emphatically, free.
 
@@ -30,7 +30,7 @@ The integration fuses those signals with a Bayesian model, producing one sensor 
 
 | Entity | State | Attributes |
 |---|---|---|
-| `sensor.xanadue_darrell_current_room` | `family_room` | `confidence`, `entropy`, `alternatives`, `observations_used` |
+| `sensor.xanadue_darrell_current_area` | `family_room` | `confidence`, `entropy`, `alternatives`, `observations_used` |
 
 ## Teaching Xanadue
 
@@ -40,7 +40,7 @@ Xanadue learns from corrections. When it's wrong, tell it:
 service: xanadue.correct
 data:
   xanadue: darrell
-  room: kitchen
+  area: kitchen
 ```
 
 That correction feeds the time-of-day priors. After a few evenings of correcting "10 PM → family room," the prior learns your routine. No priors UI, no YAML tuning — just tell it where you are and it gets smarter.

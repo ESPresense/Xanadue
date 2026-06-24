@@ -1,12 +1,12 @@
 """Inference engine for Xanadue."""
 
-from .bayesian import BayesianEngine, RoomEstimate
+from .bayesian import BayesianEngine, AreaEstimate
 from .likelihoods import Observation, compute_likelihood
 from .priors import PriorStore, hour_bucket
 
 __all__ = [
     "BayesianEngine",
-    "RoomEstimate",
+    "AreaEstimate",
     "Observation",
     "compute_likelihood",
     "PriorStore",

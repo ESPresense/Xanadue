@@ -12,9 +12,9 @@ correct:
       example: "darrell"
       selector:
         text:
-    room:
-      name: Room
-      description: The room the person is actually in
+    area:
+      name: Area
+      description: The area the person is actually in
       required: true
       example: "kitchen"
       selector:

@@ -37,7 +37,7 @@ class TestLikelihoods:
             entity_id="device_tracker.phone",
             kind="ble",
             state="kitchen",
-            room="kitchen",
+            area="kitchen",
             confidence=0.9,
         )
         assert compute_likelihood(obs, "kitchen") == 0.9
@@ -47,7 +47,7 @@ class TestLikelihoods:
             entity_id="device_tracker.phone",
             kind="ble",
             state="kitchen",
-            room="kitchen",
+            area="kitchen",
             confidence=0.9,
         )
         # Should be much lower than matching
@@ -59,7 +59,7 @@ class TestLikelihoods:
             entity_id="binary_sensor.kitchen_occupancy",
             kind="motion",
             state="on",
-            room="kitchen",
+            area="kitchen",
             age_seconds=5,
         )
         result = compute_likelihood(obs, "kitchen")
@@ -70,7 +70,7 @@ class TestLikelihoods:
             entity_id="binary_sensor.kitchen_occupancy",
             kind="motion",
             state="on",
-            room="kitchen",
+            area="kitchen",
             age_seconds=5,
         )
         result = compute_likelihood(obs, "family_room")
@@ -114,12 +114,12 @@ class TestBayesianEngine:
             entity_id="device_tracker.phone",
             kind="ble",
             state="kitchen",
-            room="kitchen",
+            area="kitchen",
             confidence=0.95,
             age_seconds=1,
         )]
         result = engine.infer(obs)
-        assert result.room == "kitchen"
+        assert result.area == "kitchen"
         assert result.confidence > 0.5
 
     def test_motion_only_inference(self, engine):
@@ -129,19 +129,19 @@ class TestBayesianEngine:
                 entity_id="binary_sensor.family_occupancy",
                 kind="motion",
                 state="on",
-                room="family_room",
+                area="family_room",
                 age_seconds=10,
             ),
             Observation(
                 entity_id="binary_sensor.kitchen_occupancy",
                 kind="motion",
                 state="off",
-                room="kitchen",
+                area="kitchen",
                 age_seconds=60,
             ),
         ]
         result = engine.infer(obs)
-        assert result.room == "family_room"
+        assert result.area == "family_room"
         assert result.confidence > 0.3  # motion-only is weaker than BLE
 
     def test_correction_shifts_prior(self, engine, prior_store, rooms):
@@ -157,7 +157,7 @@ class TestBayesianEngine:
             state="home",
         )]
         result = engine.infer(obs)
-        assert result.room == "family_room"
+        assert result.area == "family_room"
         assert result.confidence > 0.4
 
     def test_alternatives_populated(self, engine):
@@ -165,13 +165,13 @@ class TestBayesianEngine:
             entity_id="device_tracker.phone",
             kind="ble",
             state="kitchen",
-            room="kitchen",
+            area="kitchen",
             confidence=0.6,
             age_seconds=5,
         )]
         result = engine.infer(obs)
         assert len(result.alternatives) > 0
-        assert all("room" in a and "probability" in a for a in result.alternatives)
+        assert all("area" in a and "probability" in a for a in result.alternatives)
 
     def test_entropy_decreases_with_strong_signal(self, engine):
         """Strong BLE signal should produce lower entropy than weak signals."""
@@ -179,7 +179,7 @@ class TestBayesianEngine:
             entity_id="device_tracker.phone",
             kind="ble",
             state="kitchen",
-            room="kitchen",
+            area="kitchen",
             confidence=0.95,
             age_seconds=1,
         )]
@@ -200,7 +200,7 @@ class TestBayesianEngine:
             entity_id="device_tracker.phone",
             kind="ble",
             state="kitchen",
-            room="kitchen",
+            area="kitchen",
             confidence=0.95,
             age_seconds=999999,  # very stale
         )]

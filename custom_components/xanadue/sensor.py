@@ -31,11 +31,11 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Xanadue sensor."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([XanadueRoomSensor(coordinator, entry)])
+    async_add_entities([XanadueAreaSensor(coordinator, entry)])
 
 
-class XanadueRoomSensor(CoordinatorEntity, SensorEntity):
-    """Sensor that reports the inferred room for a person."""
+class XanadueAreaSensor(CoordinatorEntity, SensorEntity):
+    """Sensor that reports the inferred area for a person."""
 
     _attr_has_entity_name = True
     _attr_icon = "mdi:account-location"
@@ -44,7 +44,7 @@ class XanadueRoomSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.coordinator = coordinator
         self._attr_unique_id = f"xanadue_{coordinator.slug}"
-        self._attr_name = f"{coordinator.name} Current Room"
+        self._attr_name = f"{coordinator.name} Current Area"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, coordinator.slug)},
             "name": f"Xanadue: {coordinator.name}",
@@ -55,11 +55,11 @@ class XanadueRoomSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self) -> str:
-        """Return the inferred room."""
+        """Return the inferred area."""
         estimate = self.coordinator.data
         if estimate is None:
             return "unknown"
-        return estimate.room
+        return estimate.area
 
     @property
     def extra_state_attributes(self) -> dict:

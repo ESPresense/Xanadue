@@ -17,22 +17,22 @@ class Observation:
     entity_id: str
     kind: str          # "ble", "motion", "gps"
     state: str         # raw HA state
-    room: Optional[str] = None  # observed room (BLE) or area (motion)
+    area: Optional[str] = None  # observed area (BLE) or area (motion)
     confidence: float = 1.0     # BLE confidence (0-1)
     age_seconds: float = 0.0    # how old this observation is
 
 
-def ble_likelihood(obs: Observation, candidate_room: str) -> float:
-    """P(BLE observation | room = candidate_room).
+def ble_likelihood(obs: Observation, candidate_area: str) -> float:
+    """P(BLE observation | room = candidate_area).
 
     If the BLE tracker reports room X with confidence c:
       P(o | X) = c
       P(o | Y) = (1 - c) / (N - 1)   for Y != X (leakage)
     """
-    if obs.room is None:
+    if obs.area is None:
         return 1.0  # uninformative
 
-    if candidate_room == obs.room:
+    if candidate_area == obs.area:
         return obs.confidence
 
     # Leak remaining probability mass equally to other rooms
@@ -41,8 +41,8 @@ def ble_likelihood(obs: Observation, candidate_room: str) -> float:
     return (1.0 - obs.confidence) * 0.15
 
 
-def motion_likelihood(obs: Observation, candidate_room: str) -> float:
-    """P(motion observation | room = candidate_room).
+def motion_likelihood(obs: Observation, candidate_area: str) -> float:
+    """P(motion observation | room = candidate_area).
 
     If motion is ON in room X:
       P(on | X) = recency-weighted high
@@ -54,7 +54,7 @@ def motion_likelihood(obs: Observation, candidate_room: str) -> float:
     is_on = obs.state == "on"
 
     if is_on:
-        if candidate_room == obs.room:
+        if candidate_area == obs.area:
             # Recency decay: fresh motion = strong, stale = weaker
             decay = math.exp(-obs.age_seconds / 120.0)  # 2-min half-life
             return 0.8 * decay + 0.2  # floor of 0.2 so stale motion isn't zero
@@ -62,15 +62,15 @@ def motion_likelihood(obs: Observation, candidate_room: str) -> float:
             return 0.3  # leak — someone walked past a sensor in another room
     else:
         # Motion OFF
-        if candidate_room == obs.room:
+        if candidate_area == obs.area:
             # Motion off in candidate room = person might be sitting still
             return 0.5  # uninformative-but-slightly-negative
         else:
             return 1.0  # no information from motion being off elsewhere
 
 
-def gps_likelihood(obs: Observation, candidate_room: str) -> float:
-    """P(GPS observation | room = candidate_room).
+def gps_likelihood(obs: Observation, candidate_area: str) -> float:
+    """P(GPS observation | room = candidate_area).
 
     GPS zone.home is uninformative at room level — the person is
     *somewhere* in the house. zone.not_home means they're away.
@@ -82,12 +82,12 @@ def gps_likelihood(obs: Observation, candidate_room: str) -> float:
     return 1.0
 
 
-def compute_likelihood(obs: Observation, candidate_room: str) -> float:
+def compute_likelihood(obs: Observation, candidate_area: str) -> float:
     """Dispatch to the right likelihood model by sensor kind."""
     if obs.kind == "ble":
-        return ble_likelihood(obs, candidate_room)
+        return ble_likelihood(obs, candidate_area)
     elif obs.kind == "motion":
-        return motion_likelihood(obs, candidate_room)
+        return motion_likelihood(obs, candidate_area)
     elif obs.kind == "gps":
-        return gps_likelihood(obs, candidate_room)
+        return gps_likelihood(obs, candidate_area)
     return 1.0  # unknown → uninformative

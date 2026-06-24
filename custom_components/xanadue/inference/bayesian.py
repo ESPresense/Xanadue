@@ -16,10 +16,10 @@ from .priors import PriorStore, hour_bucket
 
 
 @dataclass
-class RoomEstimate:
+class AreaEstimate:
     """The output of a Bayesian room inference step."""
 
-    room: str                          # best guess
+    area: str                          # best guess
     confidence: float                  # posterior probability of best guess
     entropy: float                     # Shannon entropy in nats
     alternatives: list[dict]           # [{room, probability}, ...] sorted desc
@@ -43,12 +43,12 @@ class BayesianEngine:
         prior_store: PriorStore,
         max_observation_age: float = 600.0,  # 10 min
     ):
-        self.rooms = rooms
+        self.areas = rooms
         self.prior_store = prior_store
         self.max_observation_age = max_observation_age
-        self._last_estimate: Optional[RoomEstimate] = None
+        self._last_estimate: Optional[AreaEstimate] = None
 
-    def infer(self, observations: list[Observation], timestamp: Optional[float] = None) -> RoomEstimate:
+    def infer(self, observations: list[Observation], timestamp: Optional[float] = None) -> AreaEstimate:
         """Compute posterior over rooms given current observations.
 
         Args:
@@ -56,7 +56,7 @@ class BayesianEngine:
             timestamp: Optional timestamp (defaults to now)
 
         Returns:
-            RoomEstimate with best guess, confidence, entropy, alternatives
+            AreaEstimate with best guess, confidence, entropy, alternatives
         """
         if timestamp is None:
             timestamp = time.time()
@@ -73,7 +73,7 @@ class BayesianEngine:
         # Compute posterior: P(room | obs) ∝ prior(room) · ∏ P(obs_i | room)
         log_posterior: dict[str, float] = {}
 
-        for room in self.rooms:
+        for room in self.areas:
             log_p = math.log(max(prior.get(room, 1e-10), 1e-10))
 
             for obs in fresh_obs:
@@ -88,11 +88,11 @@ class BayesianEngine:
         total = sum(exp_vals.values())
         posterior = {r: ev / total for r, ev in exp_vals.items()}
 
-        # Sort rooms by posterior descending
-        sorted_rooms = sorted(posterior.items(), key=lambda x: x[1], reverse=True)
+        # Sort areas by posterior descending
+        sorted_areas = sorted(posterior.items(), key=lambda x: x[1], reverse=True)
 
-        best_room = sorted_rooms[0][0]
-        best_prob = sorted_rooms[0][1]
+        best_area = sorted_areas[0][0]
+        best_prob = sorted_areas[0][1]
 
         # Shannon entropy in nats
         entropy = -sum(
@@ -101,8 +101,8 @@ class BayesianEngine:
 
         # Alternatives (top 3 after best)
         alternatives = [
-            {"room": r, "probability": round(p, 4)}
-            for r, p in sorted_rooms[1:4]
+            {"area": r, "probability": round(p, 4)}
+            for r, p in sorted_areas[1:4]
         ]
 
         # Observations used (for transparency/debugging)
@@ -110,14 +110,14 @@ class BayesianEngine:
             {
                 "source": o.entity_id,
                 "kind": o.kind,
-                "observed": o.room or o.state,
+                "observed": o.area or o.state,
                 "age_seconds": round(o.age_seconds, 1),
             }
             for o in fresh_obs
         ]
 
-        estimate = RoomEstimate(
-            room=best_room,
+        estimate = AreaEstimate(
+            area=best_area,
             confidence=round(best_prob, 4),
             entropy=round(entropy, 4),
             alternatives=alternatives,
@@ -130,6 +130,6 @@ class BayesianEngine:
         return estimate
 
     @property
-    def last_estimate(self) -> Optional[RoomEstimate]:
+    def last_estimate(self) -> Optional[AreaEstimate]:
         """The most recent inference result."""
         return self._last_estimate

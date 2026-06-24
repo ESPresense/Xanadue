@@ -32,7 +32,7 @@ class DataStore:
 
     def append_ground_truth(
         self,
-        room: str,
+        area: str,
         source: str = "manual",
         weight: float = 1.0,
         timestamp: Optional[float] = None,
@@ -43,7 +43,7 @@ class DataStore:
 
         entry = {
             "ts": timestamp,
-            "room": room,
+            "area": area,
             "source": source,
             "weight": weight,
         }

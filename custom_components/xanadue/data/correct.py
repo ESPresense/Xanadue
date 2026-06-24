@@ -19,11 +19,11 @@ async def handle_correction(hass: HomeAssistant, call: ServiceCall) -> None:
 
     Expected service data:
         xanadue: str  (the name/slug of the Xanadue instance)
-        room: str     (the room the person is actually in)
+        area: str     (the area the person is actually in)
         duration: int (optional — how long they've been there, in seconds)
     """
     target_name = call.data["xanadue"].lower().strip().replace(" ", "_")
-    room = call.data["room"]
+    area = call.data["area"]
     duration = call.data.get("duration")
 
     # Find the coordinator for this Xanadue instance
@@ -48,11 +48,11 @@ async def handle_correction(hass: HomeAssistant, call: ServiceCall) -> None:
         weight = MANUAL_WEIGHT * min(duration / 600.0, 5.0)  # cap at 5x
 
     # Apply correction
-    await coordinator.apply_correction(room, weight=weight)
+    await coordinator.apply_correction(area, weight=weight)
 
     _LOGGER.info(
         "[Xanadue] Correction applied: %s → %s (weight=%.2f)",
         target_name,
-        room,
+        area,
         weight,
     )

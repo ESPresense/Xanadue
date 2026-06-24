@@ -1,4 +1,4 @@
-"""Xanadue — per-person room inference for Home Assistant.
+"""Xanadue — per-person area inference for Home Assistant.
 
 HA imports are lazy so pure-Python modules (classify, inference, data) can
 be imported in isolation for testing without homeassistant installed.
@@ -58,7 +58,7 @@ async def async_setup_entry(hass, entry):
             schema=vol.Schema(
                 {
                     vol.Required("xanadue"): str,
-                    vol.Required("room"): str,
+                    vol.Required("area"): str,
                     vol.Optional("duration"): int,
                 }
             ),

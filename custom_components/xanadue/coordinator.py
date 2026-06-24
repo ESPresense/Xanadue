@@ -21,7 +21,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .classify import classify, classify_all, extract_rooms, SensorKind
+from .classify import classify, classify_all, extract_areas, SensorKind
 from .const import (
     CONF_NAME,
     CONF_SENSORS,
@@ -32,7 +32,7 @@ from .const import (
     DOMAIN,
 )
 from .data.store import DataStore, get_data_dir
-from .inference.bayesian import BayesianEngine, RoomEstimate
+from .inference.bayesian import BayesianEngine, AreaEstimate
 from .inference.likelihoods import Observation
 from .inference.priors import PriorStore, hour_bucket
 
@@ -53,7 +53,7 @@ class XanadueCoordinator(DataUpdateCoordinator):
         self.classified = classify_all(self.sensor_ids, self.name)
 
         # Extract static rooms from motion sensor names
-        static_rooms = extract_rooms(self.classified)
+        static_areas = extract_areas(self.classified)
 
         # Data storage
         self.data_dir = get_data_dir(hass.config.config_dir, self.slug)
@@ -62,12 +62,12 @@ class XanadueCoordinator(DataUpdateCoordinator):
         # Prior store (loads from disk or initializes)
         self.prior_store = PriorStore(
             priors_path=self.store.get_priors_path(),
-            rooms=static_rooms or ["unknown"],
+            rooms=static_areas or ["unknown"],
         )
 
         # Inference engine
         self.engine = BayesianEngine(
-            rooms=static_rooms or ["unknown"],
+            rooms=static_areas or ["unknown"],
             prior_store=self.prior_store,
         )
 
@@ -94,7 +94,7 @@ class XanadueCoordinator(DataUpdateCoordinator):
             "[Xanadue] Coordinator started for '%s' with %d sensors, rooms: %s",
             self.name,
             len(self.sensor_ids),
-            self.engine.rooms,
+            self.engine.areas,
         )
 
     async def async_shutdown(self) -> None:
@@ -149,7 +149,7 @@ class XanadueCoordinator(DataUpdateCoordinator):
                     entity_id=sensor.entity_id,
                     kind="motion",
                     state=state_obj.state,
-                    room=sensor.room_hint,
+                    room=sensor.area_hint,
                     age_seconds=age,
                 ))
             elif sensor.kind == SensorKind.GPS:
@@ -162,7 +162,7 @@ class XanadueCoordinator(DataUpdateCoordinator):
 
         return observations
 
-    async def _async_update_data(self) -> RoomEstimate:
+    async def _async_update_data(self) -> AreaEstimate:
         """Fetch the latest data and run inference."""
         observations = self._collect_observations()
 
@@ -186,7 +186,7 @@ class XanadueCoordinator(DataUpdateCoordinator):
 
         return estimate
 
-    def _check_auto_label(self, estimate: RoomEstimate) -> None:
+    def _check_auto_label(self, estimate: AreaEstimate) -> None:
         """Check if conditions are met for auto-labeling.
 
         Auto-label fires when:
@@ -228,15 +228,15 @@ class XanadueCoordinator(DataUpdateCoordinator):
         else:
             self._stable_since = None
 
-    async def apply_correction(self, room: str, weight: float = 1.0) -> None:
+    async def apply_correction(self, area: str, weight: float = 1.0) -> None:
         """Apply a manual correction and refresh."""
-        self.prior_store.add_correction(room=room, weight=weight)
-        self.store.append_ground_truth(room=room, source="manual", weight=weight)
+        self.prior_store.add_correction(area=area, weight=weight)
+        self.store.append_ground_truth(area=area, source="manual", weight=weight)
 
         # Add room to engine's room space if new
-        if room not in self.engine.rooms:
-            self.engine.rooms.append(room)
-            self.prior_store.rooms.append(room)
+        if area not in self.engine.areas:
+            self.engine.areas.append(area)
+            self.prior_store.areas.append(area)
 
         # Trigger refresh
         await self.async_refresh()
