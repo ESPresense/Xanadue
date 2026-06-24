@@ -5,16 +5,18 @@ Updates priors and triggers a coordinator refresh.
 
 from __future__ import annotations
 
-from homeassistant.core import HomeAssistant, ServiceCall
+from typing import TYPE_CHECKING
 import logging
 
 from ..const import DOMAIN, MANUAL_WEIGHT
-from ..coordinator import XanadueCoordinator
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant, ServiceCall
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def handle_correction(hass: HomeAssistant, call: ServiceCall) -> None:
+async def handle_correction(hass: "HomeAssistant", call: "ServiceCall") -> None:
     """Process a xanadue.correct service call.
 
     Expected service data:
@@ -22,6 +24,9 @@ async def handle_correction(hass: HomeAssistant, call: ServiceCall) -> None:
         area: str     (the area the person is actually in)
         duration: int (optional — how long they've been there, in seconds)
     """
+    # Lazy import to avoid circular dependency: coordinator → data → correct → coordinator
+    from ..coordinator import XanadueCoordinator  # noqa: F811
+
     target_name = call.data["xanadue"].lower().strip().replace(" ", "_")
     area = call.data["area"]
     duration = call.data.get("duration")
