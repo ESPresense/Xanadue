@@ -50,7 +50,7 @@ class XanadueCoordinator(DataUpdateCoordinator):
         self.sensor_ids: list[str] = entry.data.get(CONF_SENSORS, [])
 
         # Classify sensors
-        self.classified = classify_all(self.sensor_ids, self.name)
+        self.classified = classify_all(self.sensor_ids, self._person_name)
 
         # Extract static areas from motion sensor names
         self._static_areas = extract_areas(self.classified)
