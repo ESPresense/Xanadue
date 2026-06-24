@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers import selector
 import voluptuous as vol
 
 from .const import CONF_NAME, CONF_SENSORS, DOMAIN
@@ -18,6 +19,14 @@ def _slug(name: str) -> str:
     return name.lower().strip().replace(" ", "_")
 
 
+# Multi-select entity picker — this is the HA-native way to let users pick
+# multiple entities from a config flow form. Raw `[str]` schemas don't
+# render and cause a 500 on the config-flow load.
+_ENTITY_MULTI_SELECT = selector.EntitySelector(
+    selector.EntitySelectorConfig(multiple=True)
+)
+
+
 class XanadueConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Xanadue."""
 
@@ -29,7 +38,6 @@ class XanadueConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             name = user_input[CONF_NAME]
-            slug = _slug(name)
 
             # Prevent duplicate Xanadues for the same name
             for entry in self._async_current_entries():
@@ -42,7 +50,7 @@ class XanadueConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     title=f"Xanadue: {name}",
                     data={
                         CONF_NAME: name,
-                        CONF_SENSORS: user_input[CONF_SENSORS],
+                        CONF_SENSORS: list(user_input[CONF_SENSORS]),
                     },
                 )
 
@@ -51,16 +59,10 @@ class XanadueConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_NAME): str,
-                    vol.Required(CONF_SENSORS): vol.All(
-                        vol.ensure_list, [str]
-                    ),
+                    vol.Required(CONF_SENSORS): _ENTITY_MULTI_SELECT,
                 }
             ),
             errors=errors,
-            description_placeholders={
-                "name_example": "Darrell",
-                "sensors_example": "device_tracker.phone_darrell_15_pro, binary_sensor.family_occupancy, ...",
-            },
         )
 
     async def async_step_import(self, import_config=None):
@@ -69,7 +71,6 @@ class XanadueConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return
 
         name = import_config[CONF_NAME]
-        slug = _slug(name)
 
         # Check for existing entry
         for entry in self._async_current_entries():
@@ -108,7 +109,7 @@ class XanadueOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             # Update the config entry data
             new_data = dict(self.config_entry.data)
-            new_data[CONF_SENSORS] = user_input[CONF_SENSORS]
+            new_data[CONF_SENSORS] = list(user_input[CONF_SENSORS])
             self.hass.config_entries.async_update_entry(
                 self.config_entry,
                 data=new_data,
@@ -122,7 +123,7 @@ class XanadueOptionsFlow(config_entries.OptionsFlow):
                     vol.Required(
                         CONF_SENSORS,
                         default=current_sensors,
-                    ): vol.All(vol.ensure_list, [str]),
+                    ): _ENTITY_MULTI_SELECT,
                 }
             ),
         )
