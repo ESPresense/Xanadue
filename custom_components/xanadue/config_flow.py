@@ -93,14 +93,11 @@ class XanadueConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> "XanadueOptionsFlow":
         """Get options flow."""
-        return XanadueOptionsFlow(config_entry)
+        return XanadueOptionsFlow()
 
 
 class XanadueOptionsFlow(config_entries.OptionsFlow):
     """Options flow for editing sensors list."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         """Manage the sensors list."""
