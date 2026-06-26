@@ -127,8 +127,11 @@ class XanadueCoordinator(DataUpdateCoordinator):
 
         self._last_state_change[entity_id] = time.time()
 
-        # Trigger an immediate refresh
-        self.async_update_listeners()
+        # Request a debounced refresh so _async_update_data re-runs inference
+        # with the new sensor state. Using async_request_refresh (not
+        # async_update_listeners) ensures the entity sees fresh data, not
+        # the stale estimate from the last scheduled poll.
+        self.async_request_refresh()
 
     def _collect_observations(self) -> list[Observation]:
         """Collect current observations from all configured sensors."""
@@ -180,6 +183,21 @@ class XanadueCoordinator(DataUpdateCoordinator):
         observations = self._collect_observations()
 
         estimate = self.engine.infer(observations)
+
+        # Dynamically expand the area space with new BLE-observed areas.
+        # BLE trackers report room names at runtime (e.g. "Master", "Kitchen")
+        # that can't be known at config time. If a BLE observation reports
+        # an area the engine doesn't know about yet, add it.
+        for obs in observations:
+            if obs.kind == "ble" and obs.area and obs.area not in self.engine.areas:
+                self.engine.areas.append(obs.area)
+                if obs.area not in self.prior_store.areas:
+                    self.prior_store.areas.append(obs.area)
+                _LOGGER.debug(
+                    "[Xanadue] Discovered new area '%s' from BLE obs", obs.area,
+                )
+                # Re-infer now that the area space has grown
+                estimate = self.engine.infer(observations)
 
         # Log posterior
         log_entry = {
