@@ -39,19 +39,22 @@ async def async_setup_entry(
 class XanadueTracker(CoordinatorEntity, TrackerEntity):
     """A device_tracker entity representing one Xanadue person."""
 
-    _attr_has_entity_name = True
     _attr_icon = "mdi:account-location"
 
     def __init__(self, coordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self.coordinator = coordinator
         self._attr_unique_id = f"xanadue_{coordinator.slug}"
+        # Use explicit name (not has_entity_name) to avoid HA compounding
+        # device name + entity name into a mangled entity_id like
+        # device_tracker.xanadue_xanadue_darrell_xanadue_darrell_location
+        self._attr_name = f"Xanadue: {coordinator.person_name}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, coordinator.slug)},
             "name": f"Xanadue: {coordinator.person_name}",
             "manufacturer": "ESPresense",
             "model": "Xanadue",
-            "sw_version": "0.2.4",
+            "sw_version": "0.2.8",
         }
 
     @property
