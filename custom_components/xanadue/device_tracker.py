@@ -54,7 +54,7 @@ class XanadueTracker(CoordinatorEntity, TrackerEntity):
             "name": f"Xanadue: {coordinator.person_name}",
             "manufacturer": "ESPresense",
             "model": "Xanadue",
-            "sw_version": "0.3.0",
+            "sw_version": "0.3.1",
         }
 
     @property

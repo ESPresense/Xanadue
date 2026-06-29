@@ -61,10 +61,13 @@ class BayesianEngine:
         if timestamp is None:
             timestamp = time.time()
 
-        # Filter out stale observations
+        # Filter out stale observations — but keep active occupancy signals.
+        # A motion sensor that's ON means someone is still there, regardless
+        # of how long ago it triggered. Only drop stale OFF/unknown readings.
         fresh_obs = [
             o for o in observations
             if o.age_seconds <= self.max_observation_age
+            or (o.kind == "motion" and o.state == "on")
         ]
 
         # Get time-of-day prior
