@@ -6,6 +6,9 @@ be imported in isolation for testing without homeassistant installed.
 
 from .const import DOMAIN, CONF_NAME, CONF_SENSORS
 
+import logging
+_LOGGER = logging.getLogger(__name__)
+
 # Defer HA imports until setup hooks are called
 _PLATFORMS = ["device_tracker"]
 
@@ -59,6 +62,46 @@ async def async_setup_entry(hass, entry):
                     vol.Required("xanadue"): str,
                     vol.Required("area"): str,
                     vol.Optional("duration"): int,
+                }
+            ),
+        )
+
+    if not hass.services.has_service(DOMAIN, "set_sensors"):
+        async def handle_set_sensors(call: "ServiceCall") -> None:
+            """Update the sensor list for a Xanadue config entry.
+
+            Service data:
+                name: str        (person name matching the config entry)
+                sensors: [str]   (full list of entity IDs — replaces existing)
+            """
+            name = call.data["name"]
+            sensors = list(call.data["sensors"])
+
+            # Find the config entry by name
+            for entry in hass.config_entries.async_entries(DOMAIN):
+                if entry.data.get("name", "").lower() == name.lower():
+                    new_data = dict(entry.data)
+                    new_data["sensors"] = sensors
+                    hass.config_entries.async_update_entry(entry, data=new_data)
+                    await hass.config_entries.async_reload(entry.entry_id)
+                    _LOGGER.info(
+                        "[Xanadue] Updated sensors for '%s': %d sensors",
+                        name, len(sensors),
+                    )
+                    return
+
+            _LOGGER.warning(
+                "[Xanadue] set_sensors: no config entry found for name '%s'", name,
+            )
+
+        hass.services.async_register(
+            DOMAIN,
+            "set_sensors",
+            handle_set_sensors,
+            schema=vol.Schema(
+                {
+                    vol.Required("name"): str,
+                    vol.Required("sensors"): [str],
                 }
             ),
         )
