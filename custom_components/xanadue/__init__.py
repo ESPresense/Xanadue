@@ -66,44 +66,91 @@ async def async_setup_entry(hass, entry):
             ),
         )
 
+    # --- Sensor management services ---
+    # Three services sharing one helper:
+    #   xanadue.set_sensors  — replace entire list (bulk)
+    #   xanadue.add_sensor   — append a single sensor
+    #   xanadue.remove_sensor — remove a single sensor
+
+    async def _find_entry(hass, name: str):
+        """Find a Xanadue config entry by person name (case-insensitive)."""
+        for e in hass.config_entries.async_entries(DOMAIN):
+            if e.data.get("name", "").lower() == name.lower():
+                return e
+        return None
+
+    async def _update_sensors(hass, entry, new_sensors: list[str]) -> None:
+        """Write new sensor list to config entry and reload."""
+        new_data = dict(entry.data)
+        new_data["sensors"] = new_sensors
+        hass.config_entries.async_update_entry(entry, data=new_data)
+        await hass.config_entries.async_reload(entry.entry_id)
+
     if not hass.services.has_service(DOMAIN, "set_sensors"):
         async def handle_set_sensors(call: "ServiceCall") -> None:
-            """Update the sensor list for a Xanadue config entry.
-
-            Service data:
-                name: str        (person name matching the config entry)
-                sensors: [str]   (full list of entity IDs — replaces existing)
-            """
             name = call.data["name"]
             sensors = list(call.data["sensors"])
-
-            # Find the config entry by name
-            for entry in hass.config_entries.async_entries(DOMAIN):
-                if entry.data.get("name", "").lower() == name.lower():
-                    new_data = dict(entry.data)
-                    new_data["sensors"] = sensors
-                    hass.config_entries.async_update_entry(entry, data=new_data)
-                    await hass.config_entries.async_reload(entry.entry_id)
-                    _LOGGER.info(
-                        "[Xanadue] Updated sensors for '%s': %d sensors",
-                        name, len(sensors),
-                    )
-                    return
-
-            _LOGGER.warning(
-                "[Xanadue] set_sensors: no config entry found for name '%s'", name,
-            )
+            entry = await _find_entry(hass, name)
+            if entry is None:
+                _LOGGER.warning("[Xanadue] set_sensors: no entry for '%s'", name)
+                return
+            await _update_sensors(hass, entry, sensors)
+            _LOGGER.info("[Xanadue] set_sensors '%s': %d sensors", name, len(sensors))
 
         hass.services.async_register(
-            DOMAIN,
-            "set_sensors",
-            handle_set_sensors,
-            schema=vol.Schema(
-                {
-                    vol.Required("name"): str,
-                    vol.Required("sensors"): [str],
-                }
-            ),
+            DOMAIN, "set_sensors", handle_set_sensors,
+            schema=vol.Schema({
+                vol.Required("name"): str,
+                vol.Required("sensors"): [str],
+            }),
+        )
+
+    if not hass.services.has_service(DOMAIN, "add_sensor"):
+        async def handle_add_sensor(call: "ServiceCall") -> None:
+            name = call.data["name"]
+            sensor = call.data["sensor"]
+            entry = await _find_entry(hass, name)
+            if entry is None:
+                _LOGGER.warning("[Xanadue] add_sensor: no entry for '%s'", name)
+                return
+            current = list(entry.data.get("sensors", []))
+            if sensor in current:
+                _LOGGER.info("[Xanadue] add_sensor '%s': '%s' already present", name, sensor)
+                return
+            current.append(sensor)
+            await _update_sensors(hass, entry, current)
+            _LOGGER.info("[Xanadue] add_sensor '%s': added '%s' (%d total)", name, sensor, len(current))
+
+        hass.services.async_register(
+            DOMAIN, "add_sensor", handle_add_sensor,
+            schema=vol.Schema({
+                vol.Required("name"): str,
+                vol.Required("sensor"): str,
+            }),
+        )
+
+    if not hass.services.has_service(DOMAIN, "remove_sensor"):
+        async def handle_remove_sensor(call: "ServiceCall") -> None:
+            name = call.data["name"]
+            sensor = call.data["sensor"]
+            entry = await _find_entry(hass, name)
+            if entry is None:
+                _LOGGER.warning("[Xanadue] remove_sensor: no entry for '%s'", name)
+                return
+            current = list(entry.data.get("sensors", []))
+            if sensor not in current:
+                _LOGGER.info("[Xanadue] remove_sensor '%s': '%s' not present", name, sensor)
+                return
+            current.remove(sensor)
+            await _update_sensors(hass, entry, current)
+            _LOGGER.info("[Xanadue] remove_sensor '%s': removed '%s' (%d total)", name, sensor, len(current))
+
+        hass.services.async_register(
+            DOMAIN, "remove_sensor", handle_remove_sensor,
+            schema=vol.Schema({
+                vol.Required("name"): str,
+                vol.Required("sensor"): str,
+            }),
         )
 
     return True
