@@ -67,8 +67,6 @@ async def async_setup_entry(hass, entry):
         )
 
     # --- Sensor management services ---
-    # Three services sharing one helper:
-    #   xanadue.set_sensors  — replace entire list (bulk)
     #   xanadue.add_sensor   — append a single sensor
     #   xanadue.remove_sensor — remove a single sensor
 
@@ -85,25 +83,6 @@ async def async_setup_entry(hass, entry):
         new_data["sensors"] = new_sensors
         hass.config_entries.async_update_entry(entry, data=new_data)
         await hass.config_entries.async_reload(entry.entry_id)
-
-    if not hass.services.has_service(DOMAIN, "set_sensors"):
-        async def handle_set_sensors(call: "ServiceCall") -> None:
-            name = call.data["name"]
-            sensors = list(call.data["sensors"])
-            entry = await _find_entry(hass, name)
-            if entry is None:
-                _LOGGER.warning("[Xanadue] set_sensors: no entry for '%s'", name)
-                return
-            await _update_sensors(hass, entry, sensors)
-            _LOGGER.info("[Xanadue] set_sensors '%s': %d sensors", name, len(sensors))
-
-        hass.services.async_register(
-            DOMAIN, "set_sensors", handle_set_sensors,
-            schema=vol.Schema({
-                vol.Required("name"): str,
-                vol.Required("sensors"): [str],
-            }),
-        )
 
     if not hass.services.has_service(DOMAIN, "add_sensor"):
         async def handle_add_sensor(call: "ServiceCall") -> None:
