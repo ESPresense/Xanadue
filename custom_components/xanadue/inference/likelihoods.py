@@ -59,7 +59,8 @@ def motion_likelihood(obs: Observation, candidate_area: str) -> float:
             decay = math.exp(-obs.age_seconds / 120.0)  # 2-min half-life
             return 0.8 * decay + 0.2  # floor of 0.2 so stale motion isn't zero
         else:
-            return 0.3  # leak — someone walked past a sensor in another area
+            return 0.1  # leak — someone walked past. Must stay below match floor (0.2)
+                       # so a stale ON sensor still weakly favors its own area.
     else:
         # Motion OFF
         if candidate_area == obs.area:
