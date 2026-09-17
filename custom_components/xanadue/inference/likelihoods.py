@@ -70,17 +70,57 @@ def motion_likelihood(obs: Observation, candidate_area: str) -> float:
             return 1.0  # no information from motion being off elsewhere
 
 
+# Home Assistant device_tracker states that mean "in the house but no room
+# information" rather than a named zone. `home` is the state inside `zone.home`
+# (HA uses the zone's name, minus the `zone.` prefix), and the empty/unknown set
+# covers a tracker that has not reported yet.
+_GPS_NON_ZONE_STATES = ("", "unknown", "unavailable", "none")
+
+
+def gps_indicates_home(state: Optional[str]) -> bool:
+    """True when a GPS state means "in the house", room unspecified."""
+    return (state or "").strip().lower() in _GPS_NON_ZONE_STATES + ("home",)
+
+
+def gps_indicates_away(state: Optional[str]) -> bool:
+    """True when a GPS state puts the person outside the house.
+
+    Anything that is not the home zone and not a missing value counts as away,
+    which covers `not_home`, `away`, and every named away zone (`work`,
+    `school`, `shops`, iCloud3 activity locations).
+    """
+    return not gps_indicates_home(state)
+
+
 def gps_likelihood(obs: Observation, candidate_area: str) -> float:
     """P(GPS observation | area = candidate_area).
 
-    GPS zone.home is uninformative at area level — the person is
-    *somewhere* in the house. zone.not_home means they're away.
-    """
-    if obs.state in ("not_home", "away"):
-        return 0.01  # very unlikely to be in any area if GPS says not_home
+    GPS is a coarse signal: `home` means the person is *somewhere* in the house,
+    which says nothing about which room, so it is uninformative at area level.
+    Any other zone state means they are *not* in the house.
 
-    # state is "home" or a zone name → uninformative for which area
-    return 1.0
+    The previous version only recognised the literal strings `not_home`/`away`,
+    so every named away zone — `work`, `school`, `shops`, iCloud3 activity
+    locations — fell through to the `1.0` branch and was silently treated as
+    "home, area unknown". That collapsed the posterior to the prior and let a
+    flat tie decide the reported room (issue #2). In Home Assistant a
+    device_tracker's state inside a zone is the zone's name (`zone.home` →
+    `"home"`), so matching that one string is enough to split home from
+    everywhere else without reaching into `hass`.
+    """
+    state = (obs.state or "").strip().lower()
+
+    # No usable signal at all — treat as uninformative rather than "away", so a
+    # temporarily unknown tracker does not assert the person has left the house.
+    if state in ("", "unknown", "unavailable", "none"):
+        return 1.0
+
+    # At home (or in the home zone): somewhere in the house, room unknown.
+    if state == "home":
+        return 1.0
+
+    # Any other zone, including `not_home`/`away`, means not in the house.
+    return 0.01
 
 
 def compute_likelihood(obs: Observation, candidate_area: str) -> float:
